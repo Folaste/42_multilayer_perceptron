@@ -1,7 +1,18 @@
 import argparse
 
+from pyexpat import model
+
 from parser_utils import ratio_type
 from split_data import split_data
+
+# TODO :
+#     - Training program
+#         - Class ?
+#         - Stock best model
+#     - Learning program
+#     - Docs
+#         - README
+#         - Docstring ?
 
 if __name__ == "__main__":
     description = """
@@ -44,6 +55,15 @@ if __name__ == "__main__":
                             default="z-score",
                             choices=["z-score", "min-max"]
                         )
+
+    # TODO : Add arguments for training program :
+    #     - layers
+    #     - epochs
+    #     - learning_rate
+    #     - batch_size
+    #     - activation_function
+    #     - loss_function
+    #     - weights_initializers
 
     try:
         args = parser.parse_args()
