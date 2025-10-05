@@ -1,5 +1,7 @@
 import argparse
 
+from pyexpat import model
+
 from parser_utils import ratio_type
 from split_data import split_data
 
