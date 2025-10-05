@@ -2,11 +2,15 @@ import os
 import pandas as pd
 import random
 
-def split_data(input_path, training_path, validation_path, ratio=0.2, random_seed=None):
+def split_data(input_path, ratio=0.2, random_seed=None, normalization_method='z-score'):
+
+    training_path = 'data/training_data.csv'
+    validation_path = 'data/validation_data.csv'
+
     # Load the data
     df = pd.read_csv(input_path, header=None)
 
-    label_col = 1
+    result_col = 1
 
     # Set the random seed
     if random_seed:
@@ -14,7 +18,7 @@ def split_data(input_path, training_path, validation_path, ratio=0.2, random_see
 
     # Group data by class (to have balanced classes)
     groups = {}
-    for label, group in df.groupby(label_col):
+    for label, group in df.groupby(result_col):
         groups[label] = group.sample(frac=1, random_state=random_seed) # Internal shuffle
 
     training_parts = []
@@ -36,14 +40,46 @@ def split_data(input_path, training_path, validation_path, ratio=0.2, random_see
         if directory and not os.path.exists(directory):
             os.makedirs(directory)
 
-    # Save the data
-    train_data.to_csv(training_path, index=False)
-    validation_data.to_csv(validation_path, index=False)
+    # Save the complete data
+    train_data.to_csv(training_path, index=False, header=False)
+    validation_data.to_csv(validation_path, index=False, header=False)
 
-    print(f"Training dataset saved to {training_path}")
-    print(train_data[label_col].value_counts(normalize=True))
-    print(f"Validation dataset saved to {validation_path}")
-    print(validation_data[label_col].value_counts(normalize=True))
+    # Separate data from result
+    result_train_set = train_data[[result_col]]
+    result_validation_set = validation_data[[result_col]]
+    data_train_set = train_data.drop([0, 1], axis=1)
+    data_validation_set = validation_data.drop([0, 1], axis=1)
 
-if __name__ == "__main__":
-    split_data("data.csv", "data/train_data.csv", "data/validation_data.csv", random_seed=42)
+    # Normalize data
+    data_train_set, data_validation_set = normalize_data(data_train_set, data_validation_set, normalization_method)
+
+    training_dir = os.path.dirname(training_path)
+    training_file = os.path.basename(training_path)
+    validation_dir = os.path.dirname(validation_path)
+    validation_file = os.path.basename(validation_path)
+
+    # Save the data with X_ and y_ prefixes, preserving directory structure
+    data_train_set.to_csv(os.path.join(training_dir, 'X_' + training_file), index=False, header=False)
+    data_validation_set.to_csv(os.path.join(validation_dir, 'X_' + validation_file), index=False, header=False)
+    result_train_set.to_csv(os.path.join(training_dir, 'y_' + training_file), index=False, header=False)
+    result_validation_set.to_csv(os.path.join(validation_dir, 'y_' + validation_file), index=False, header=False)
+
+
+
+def normalize_data(train_set, validation_set, normalization_method='z-score'):
+    if normalization_method == 'z-score':
+        mean = train_set.mean()
+        std = train_set.std()
+
+        train_set = (train_set - mean) / std
+        validation_set = (validation_set - mean) / std
+
+
+    elif normalization_method == 'min-max':
+        min_val = train_set.min()
+        max_val = train_set.max()
+
+        train_set = (train_set - min_val) / (max_val - min_val)
+        validation_set = (validation_set - min_val) / (max_val - min_val)
+
+    return train_set, validation_set
