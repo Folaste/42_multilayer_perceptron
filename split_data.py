@@ -13,8 +13,10 @@ def split_data(input_path, ratio=0.2, random_seed=None, normalization_method='z-
     result_col = 1
 
     # Set the random seed
-    if random_seed:
-        random.seed(random_seed)
+    random.seed(random_seed)
+
+    # Replace diagnosis column by binary classes
+    df[result_col] = df[result_col].map({'M' : 1, 'B': 0})
 
     # Group data by class (to have balanced classes)
     groups = {}
