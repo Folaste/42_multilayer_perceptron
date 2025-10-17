@@ -12,7 +12,7 @@ def initialize(dimensions):
     np.random.seed(1)
 
     for l in range(1, L):
-        parameters['W' + str(l)] = np.random.randn(dimensions[l], dimensions[l-1]) * 0.01
+        parameters['W' + str(l)] = np.random.randn(dimensions[l], dimensions[l-1])
         parameters['b' + str(l)] = np.zeros((dimensions[l], 1))
 
     return parameters
@@ -62,59 +62,74 @@ def predict(X, parameters):
     activations = forward_propagation(X, parameters)
     return activations['A' + str(len(parameters) // 2)]
 
-def deep_neural_network(X_path, y_path, hidden_layers, learning_rate, epochs):
+def deep_neural_network(X_train_path, y_train_path, X_valid_path, y_valid_path, hidden_layers, learning_rate, epochs):
 
     if not isinstance(hidden_layers, (list, tuple)) or not all(isinstance(x, int) for x in hidden_layers):
         raise ValueError("hidden_layers must be a list of integers")
 
     try:
-        X = np.genfromtxt(X_path, delimiter=",")
-        y = np.genfromtxt(y_path, delimiter=",")
+        X_train = np.genfromtxt(X_train_path, delimiter=",")
+        y_train = np.genfromtxt(y_train_path, delimiter=",")
+        X_valid = np.genfromtxt(X_valid_path, delimiter=",")
+        y_valid = np.genfromtxt(y_valid_path, delimiter=",")
     except Exception as e:
         raise ValueError(f"Error loading CSV files: {str(e)}")
 
-    X = X.T
-    # y = y.reshape((1, y.shape[0]))
-    y = y.T
+    # Format attendu : (n_features, n_samples)
+    X_train = X_train.T
+    X_valid = X_valid.T
 
-    print('dimensions de X:', X.shape)
-    print('dimensions de y:', y.shape)
+    # y_train et y_valid doivent être (n_classes, n_samples)
+    y_train = y_train.T
+    y_valid = y_valid.T
+
+    print('dimensions de X_train:', X_train.shape)
+    print('dimensions de y_train:', y_train.shape)
 
     dimensions = list(hidden_layers)
-    dimensions.insert(0, X.shape[0])
-    dimensions.append(2)
+    dimensions.insert(0, X_train.shape[0])  # input layer
+    dimensions.append(2)  # output layer (2 classes)
     print(f"Network dimensions: {dimensions}")
 
     parameters = initialize(dimensions)
-    # for e in parameters:
-    #     print(f"{e}: {parameters[e].shape}")
-
     L = len(parameters) // 2
 
-    training_history = np.zeros((epochs, 2))
+    training_history = np.zeros((epochs, 3))
 
     for i in tqdm(range(epochs)):
-        activations = forward_propagation(X, parameters)
-        gradients = back_propagation(y, parameters, activations)
+        # Forward pass
+        activations = forward_propagation(X_train, parameters)
+
+        # Backpropagation
+        gradients = back_propagation(y_train, parameters, activations)
         parameters = update(gradients, parameters, learning_rate)
 
+        # Sorties du forward pass
         Af = activations['A' + str(L)]
-        Af = np.clip(Af, 1e-15, 1 - 1e-15)  # stabilité
+        Af = np.clip(Af, 1e-15, 1 - 1e-15)  # stabilité numérique
 
-        # Transposées pour sklearn
+        # === Calcul du loss et de la précision ===
+        # sklearn attend (n_samples, n_classes)
+        y_train_T = y_train.T
         Af_T = Af.T
-        y_T = y.T
 
-        training_history[i, 0] = log_loss(y_T, Af_T)
-        training_history[i, 1] = accuracy_score(y_T.argmax(axis=1), Af_T.argmax(axis=1))
+        # Loss et accuracy sur le train set
+        training_history[i, 0] = log_loss(y_train_T, Af_T)
+        training_history[i, 1] = accuracy_score(y_train_T.argmax(axis=1), Af_T.argmax(axis=1))
 
+        # Accuracy sur le validation set
+        y_pred_valid = predict(X_valid, parameters)
+        y_pred_valid_T = y_pred_valid.T  # pour correspondre à sklearn
+        training_history[i, 2] = accuracy_score(y_valid.T.argmax(axis=1), y_pred_valid_T.argmax(axis=1))
 
+    # === Graphiques ===
     plt.figure(figsize=(12, 4))
     plt.subplot(1, 2, 1)
     plt.plot(training_history[:, 0], label='train loss')
     plt.legend()
     plt.subplot(1, 2, 2)
     plt.plot(training_history[:, 1], label='train acc')
+    plt.plot(training_history[:, 2], label='valid acc')
     plt.legend()
     plt.show()
 
