@@ -3,6 +3,7 @@ import argparse
 from parser_utils import ratio_type, positive_int
 from split_data import split_data
 from MLP import MLP
+from neural_network import deep_neural_network
 
 # TODO :
 #     - Training program
@@ -13,7 +14,8 @@ from MLP import MLP
 #         - README
 #         - Docstring ?
 
-if __name__ == "__main__":
+def parse_args():
+
     description = """
         Multilayer Perceptron is a program that can be used to train a neural network.
         You can use it to split the data, train the network, and predict the results.
@@ -105,6 +107,8 @@ if __name__ == "__main__":
                             default="heNormal"
                         )
 
+    return parser.parse_args()
+
     # TODO : Add arguments for training program :
     #     - layers V
     #     - epochs V
@@ -114,18 +118,20 @@ if __name__ == "__main__":
     #     - loss_function ?
     #     - weights_initializers V
 
-    try:
-        args = parser.parse_args()
-        print(args)
 
-        if args.action == "split" and not args.dataset_path:
-            raise ValueError("You must provide a dataset path when splitting the data.")
+if __name__ == "__main__":
+    # try:
+    args = parse_args()
+    print(args)
 
-        if args.action == "split":
-            split_data(args.dataset_path, args.ratio, args.random_seed)
+    # except Exception as e:
+    #     print(f"Error: {e}")
+    if args.action == "split" and not args.dataset_path:
+        raise ValueError("You must provide a dataset path when splitting the data.")
 
-        elif args.action == "train":
-            MLP(args.layers, args.epochs, args.learning_rate, args.batch_size, args.activation_function, args.weights_initializers, args.random_seed)
+    if args.action == "split":
+        split_data(args.dataset_path, args.ratio, args.random_seed)
 
-    except Exception as e:
-        print(f"Error: {e}")
+    elif args.action == "train":
+        # MLP(args.layers, args.epochs, args.learning_rate, args.batch_size, args.activation_function, args.weights_initializers, args.random_seed)
+        deep_neural_network("data/X_training_data.csv", "data/y_onehot_training_data.csv", args.layers, args.learning_rate, args.epochs)
