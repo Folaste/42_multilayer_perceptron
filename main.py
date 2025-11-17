@@ -23,7 +23,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description=description)
 
-    mandatory_parser = parser.add_argument_group(title="Mandatories arguments")
+    mandatory_parser = parser.add_argument_group(title="Mandatory arguments")
 
     mandatory_parser.add_argument("-a", "--action",
                             type=str,
@@ -134,5 +134,4 @@ if __name__ == "__main__":
         split_data(args.dataset_path, args.ratio, args.random_seed)
 
     elif args.action == "train":
-        # MLP(args.layers, args.epochs, args.learning_rate, args.batch_size, args.activation_function, args.weights_initializers, args.random_seed)
-        deep_neural_network("data/X_training_data.csv", "data/y_onehot_training_data.csv", "data/X_validation_data.csv", "data/y_onehot_validation_data.csv", args.layers, args.learning_rate, args.epochs)
+        deep_neural_network("data/X_training_data.csv", "data/y_onehot_training_data.csv", "data/X_validation_data.csv", "data/y_onehot_validation_data.csv", args.layers, args.learning_rate, args.epochs, args.batch_size)

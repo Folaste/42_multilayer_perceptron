@@ -62,7 +62,7 @@ def predict(X, parameters):
     activations = forward_propagation(X, parameters)
     return activations['A' + str(len(parameters) // 2)]
 
-def deep_neural_network(X_train_path, y_train_path, X_valid_path, y_valid_path, hidden_layers, learning_rate, epochs):
+def deep_neural_network(X_train_path, y_train_path, X_valid_path, y_valid_path, hidden_layers, learning_rate, epochs, batch_size):
 
     if not isinstance(hidden_layers, (list, tuple)) or not all(isinstance(x, int) for x in hidden_layers):
         raise ValueError("hidden_layers must be a list of integers")
@@ -92,35 +92,57 @@ def deep_neural_network(X_train_path, y_train_path, X_valid_path, y_valid_path, 
     print(f"Network dimensions: {dimensions}")
 
     parameters = initialize(dimensions)
-    L = len(parameters) // 2
+    # L = len(parameters) // 2
 
     training_history = np.zeros((epochs, 3))
 
     for i in tqdm(range(epochs)):
-        # Forward pass
-        activations = forward_propagation(X_train, parameters)
 
-        # Backpropagation
-        gradients = back_propagation(y_train, parameters, activations)
-        parameters = update(gradients, parameters, learning_rate)
+        if batch_size == 0:
 
-        # Sorties du forward pass
-        Af = activations['A' + str(L)]
-        Af = np.clip(Af, 1e-15, 1 - 1e-15)  # stabilité numérique
+            activations = forward_propagation(X_train, parameters)
+            gradients = back_propagation(y_train, parameters, activations)
+            parameters = update(gradients, parameters, learning_rate)
 
-        # === Calcul du loss et de la précision ===
-        # sklearn attend (n_samples, n_classes)
+        else:
+            # Shuffling data
+            permutation = np.random.permutation(X_train.shape[1])
+            X_shuffled = X_train[:, permutation]
+            y_shuffled = y_train[:, permutation]
+
+            nb_batches = X_train.shape[1] // batch_size
+
+            for b in range(nb_batches):
+                start = b * batch_size
+                end = (b + 1) * batch_size
+
+                X_batch = X_shuffled[:, start:end]
+                y_batch = y_shuffled[:, start:end]
+
+                activations = forward_propagation(X_batch, parameters)
+                gradients = back_propagation(y_batch, parameters, activations)
+                parameters = update(gradients, parameters, learning_rate)
+
+        # ========= IMPORTANT =========
+        # Recalcul complet pour le train set
+        Af = predict(X_train, parameters)
+        Af = np.clip(Af, 1e-15, 1 - 1e-15)
+
+        # Metrics
         y_train_T = y_train.T
         Af_T = Af.T
 
-        # Loss et accuracy sur le train set
         training_history[i, 0] = log_loss(y_train_T, Af_T)
         training_history[i, 1] = accuracy_score(y_train_T.argmax(axis=1), Af_T.argmax(axis=1))
 
-        # Accuracy sur le validation set
+        # Validation
         y_pred_valid = predict(X_valid, parameters)
-        y_pred_valid_T = y_pred_valid.T  # pour correspondre à sklearn
-        training_history[i, 2] = accuracy_score(y_valid.T.argmax(axis=1), y_pred_valid_T.argmax(axis=1))
+        training_history[i, 2] = accuracy_score(y_valid.T.argmax(axis=1), y_pred_valid.T.argmax(axis=1))
+
+        print(
+            f"Epoch {i + 1}/{epochs} : loss = {round(float(training_history[i, 0]), 3)}, "
+            f"accuracy train = {round(float(training_history[i, 1]), 3)}, accuracy valid = {round(float(training_history[i, 2]), 3)}"
+        )
 
     # === Graphiques ===
     plt.figure(figsize=(12, 4))
