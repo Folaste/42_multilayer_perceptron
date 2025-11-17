@@ -2,7 +2,6 @@ import argparse
 
 from parser_utils import ratio_type, positive_int
 from split_data import split_data
-from MLP import MLP
 from neural_network import deep_neural_network
 
 # TODO :
