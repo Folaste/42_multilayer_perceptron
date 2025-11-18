@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.metrics import log_loss, accuracy_score
 
+from src.mlp_utils import ft_log_loss, ft_accuracy_score
+
 
 def initialize(dimensions):
 
@@ -67,6 +69,8 @@ def predict(x, parameters):
 
 def build_model_filename(hidden_layers, learning_rate, batch_size, epochs):
     hl = "-".join(str(h) for h in hidden_layers)
+    if batch_size == 0:
+        return f"model_h[{hl}]_lr{learning_rate}_ep{epochs}.npz"
     return f"model_h[{hl}]_lr{learning_rate}_bs{batch_size}_ep{epochs}.npz"
 
 def save_model(parameters, layers, learning_rate, batch_size, epochs):
@@ -117,7 +121,7 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
 
     parameters = initialize(dimensions)
 
-    training_history = np.zeros((epochs, 3))
+    training_history = np.zeros((epochs, 6))
 
     pbar = tqdm(range(epochs), desc="Training")
 
@@ -165,7 +169,9 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
         training_history[i, 0] = train_loss
         training_history[i, 1] = train_acc
         training_history[i, 2] = valid_acc
-
+        training_history[i, 3] = ft_log_loss(y_train_t, af_t)
+        training_history[i, 4] = float(ft_accuracy_score(y_train_t.argmax(axis=1), af_t.argmax(axis=1)))
+        training_history[i, 5] = float(ft_accuracy_score(y_valid.T.argmax(axis=1), y_pred_valid.T.argmax(axis=1)))
         # Update tqdm display
         pbar.set_postfix({
             "loss": f"{train_loss:.3f}",
@@ -178,6 +184,11 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
               f"train loss : {round(float(training_history[i, 0]), 3)} - "
               f"train acc : {round(float(training_history[i, 1]), 3)} - "
               f"valid acc : {round(float(training_history[i, 2]), 3)}"
+        )
+        print(f"Epoch {i + 1}/{epochs} : "
+              f"train loss : {round(float(training_history[i, 3]), 3)} - "
+              f"train acc : {round(float(training_history[i, 4]), 3)} - "
+              f"valid acc : {round(float(training_history[i, 5]), 3)}"
         )
 
     save_model(parameters, dimensions, learning_rate, batch_size, epochs)
