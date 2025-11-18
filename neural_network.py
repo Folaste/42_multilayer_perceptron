@@ -1,5 +1,8 @@
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
+
 from tqdm import tqdm
 from sklearn.metrics import log_loss, accuracy_score
 
@@ -62,6 +65,27 @@ def predict(X, parameters):
     activations = forward_propagation(X, parameters)
     return activations['A' + str(len(parameters) // 2)]
 
+def build_model_filename(hidden_layers, learning_rate, batch_size, epochs):
+    hl = "-".join(str(h) for h in hidden_layers)
+    return f"model_h[{hl}]_lr{learning_rate}_bs{batch_size}_ep{epochs}.npz"
+
+def save_model(parameters, layers, learning_rate, batch_size, epochs):
+    # 1) Création du dossier models/
+    os.makedirs("models", exist_ok=True)
+
+    # 2) Construire le nom du fichier
+    filename = build_model_filename(layers, learning_rate, batch_size, epochs)
+    filepath = os.path.join("models", filename)
+
+    # 3) Filtrer W* et b*
+    filtered = {k: v for k, v in parameters.items() if k.startswith(("W", "b"))}
+
+    # 4) Sauvegarde
+    np.savez(filepath, **filtered)
+
+    print(f"Model saved to: {filepath}")
+    return filepath
+
 def deep_neural_network(X_train_path, y_train_path, X_valid_path, y_valid_path, hidden_layers, learning_rate, epochs, batch_size):
 
     if not isinstance(hidden_layers, (list, tuple)) or not all(isinstance(x, int) for x in hidden_layers):
@@ -96,16 +120,17 @@ def deep_neural_network(X_train_path, y_train_path, X_valid_path, y_valid_path, 
 
     training_history = np.zeros((epochs, 3))
 
-    for i in tqdm(range(epochs)):
+    pbar = tqdm(range(epochs), desc="Training")
+
+    for i in pbar:
 
         if batch_size == 0:
-
             activations = forward_propagation(X_train, parameters)
             gradients = back_propagation(y_train, parameters, activations)
             parameters = update(gradients, parameters, learning_rate)
 
         else:
-            # Shuffling data
+            # Shuffle
             permutation = np.random.permutation(X_train.shape[1])
             X_shuffled = X_train[:, permutation]
             y_shuffled = y_train[:, permutation]
@@ -123,35 +148,57 @@ def deep_neural_network(X_train_path, y_train_path, X_valid_path, y_valid_path, 
                 gradients = back_propagation(y_batch, parameters, activations)
                 parameters = update(gradients, parameters, learning_rate)
 
-        # ========= IMPORTANT =========
-        # Recalcul complet pour le train set
+        # === Full train eval ===
         Af = predict(X_train, parameters)
         Af = np.clip(Af, 1e-15, 1 - 1e-15)
 
-        # Metrics
         y_train_T = y_train.T
         Af_T = Af.T
 
-        training_history[i, 0] = log_loss(y_train_T, Af_T)
-        training_history[i, 1] = accuracy_score(y_train_T.argmax(axis=1), Af_T.argmax(axis=1))
+        train_loss = float(log_loss(y_train_T, Af_T))
+        train_acc = float(accuracy_score(y_train_T.argmax(axis=1), Af_T.argmax(axis=1)))
 
         # Validation
         y_pred_valid = predict(X_valid, parameters)
-        training_history[i, 2] = accuracy_score(y_valid.T.argmax(axis=1), y_pred_valid.T.argmax(axis=1))
+        valid_acc = float(accuracy_score(y_valid.T.argmax(axis=1), y_pred_valid.T.argmax(axis=1)))
 
-        print(
-            f"Epoch {i + 1}/{epochs} : loss = {round(float(training_history[i, 0]), 3)}, "
-            f"accuracy train = {round(float(training_history[i, 1]), 3)}, accuracy valid = {round(float(training_history[i, 2]), 3)}"
+        # Save history
+        training_history[i, 0] = train_loss
+        training_history[i, 1] = train_acc
+        training_history[i, 2] = valid_acc
+
+        # Update tqdm display
+        pbar.set_postfix({
+            "loss": f"{train_loss:.3f}",
+            "train_acc": f"{train_acc:.3f}",
+            "valid_acc": f"{valid_acc:.3f}",
+        })
+
+    for i in range(epochs):
+        print(f"Epoch {i + 1}/{epochs} : "
+              f"train loss : {round(float(training_history[i, 0]), 3)} - "
+              f"train acc : {round(float(training_history[i, 1]), 3)} - "
+              f"valid acc : {round(float(training_history[i, 2]), 3)}"
         )
+
+    save_model(parameters, dimensions, learning_rate, batch_size, epochs)
+
 
     # === Graphiques ===
     plt.figure(figsize=(12, 4))
+    plt.suptitle("Model evolution", fontsize=20)
     plt.subplot(1, 2, 1)
+    plt.title("Loss")
     plt.plot(training_history[:, 0], label='train loss')
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
     plt.legend()
     plt.subplot(1, 2, 2)
+    plt.title("Accuracy")
     plt.plot(training_history[:, 1], label='train acc')
     plt.plot(training_history[:, 2], label='valid acc')
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
     plt.legend()
     plt.show()
 
