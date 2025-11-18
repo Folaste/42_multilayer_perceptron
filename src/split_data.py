@@ -5,8 +5,8 @@ import random
 
 def split_data(input_path, ratio=0.2, random_seed=None, normalization_method='z-score'):
 
-    training_path = 'data/training_data.csv'
-    validation_path = 'data/validation_data.csv'
+    training_path = '../data/training_data.csv'
+    validation_path = '../data/validation_data.csv'
 
     # Load the data
     df = pd.read_csv(input_path, header=None)

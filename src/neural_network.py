@@ -10,59 +10,59 @@ from sklearn.metrics import log_loss, accuracy_score
 def initialize(dimensions):
 
     parameters = {}
-    L = len(dimensions)
+    l = len(dimensions)
 
     np.random.seed(1)
 
-    for l in range(1, L):
+    for l in range(1, l):
         parameters['W' + str(l)] = np.random.randn(dimensions[l], dimensions[l-1])
         parameters['b' + str(l)] = np.zeros((dimensions[l], 1))
 
     return parameters
 
 
-def forward_propagation(X, parameters):
-    activations = {'A0': X}
-    L = len(parameters) // 2
+def forward_propagation(x, parameters):
+    activations = {'A0': x}
+    nb_dimensions = len(parameters) // 2
 
-    for l in range(1, L+1):
-        Z = parameters['W' + str(l)].dot(activations['A' + str(l-1)]) + parameters['b' + str(l)]
-        if l < L:
-            activations['A' + str(l)] = 1 / (1 + np.exp(-Z))  # Sigmoid
+    for l in range(1, nb_dimensions+1):
+        z = parameters['W' + str(l)].dot(activations['A' + str(l-1)]) + parameters['b' + str(l)]
+        if l < nb_dimensions:
+            activations['A' + str(l)] = 1 / (1 + np.exp(-z))  # Sigmoid
         else:
             # --- Softmax stable ---
-            expZ = np.exp(Z - np.max(Z, axis=0, keepdims=True))
-            activations['A' + str(l)] = expZ / np.sum(expZ, axis=0, keepdims=True)
+            exp_z = np.exp(z - np.max(z, axis=0, keepdims=True))
+            activations['A' + str(l)] = exp_z / np.sum(exp_z, axis=0, keepdims=True)
 
     return activations
 
 
 def back_propagation(y, parameters, activations):
     nb_samples = y.shape[1]
-    L = len(parameters) // 2
+    l = len(parameters) // 2
 
-    dZ = activations['A' + str(L)] - y
+    d_z = activations['A' + str(l)] - y
     gradients = {}
 
-    for l in reversed(range(1, L+1)):
-        gradients['dW' + str(l)] = 1 / nb_samples * dZ.dot(activations['A' + str(l-1)].T)
-        gradients['db' + str(l)] = 1 / nb_samples * np.sum(dZ, axis=1, keepdims=True)
+    for l in reversed(range(1, l+1)):
+        gradients['dW' + str(l)] = 1 / nb_samples * d_z.dot(activations['A' + str(l-1)].T)
+        gradients['db' + str(l)] = 1 / nb_samples * np.sum(d_z, axis=1, keepdims=True)
         if l > 1:
-            dZ = np.dot(parameters['W' + str(l)].T, dZ) * (activations['A' + str(l-1)] * (1 - activations['A' + str(l-1)]))
+            d_z = np.dot(parameters['W' + str(l)].T, d_z) * (activations['A' + str(l-1)] * (1 - activations['A' + str(l-1)]))
 
     return gradients
 
 def update(gradients, parameters, learning_rate):
-    L = len(parameters) // 2
+    l = len(parameters) // 2
 
-    for l in range(1, L+1):
+    for l in range(1, l+1):
         parameters['W' + str(l)] -= learning_rate * gradients['dW' + str(l)]
         parameters['b' + str(l)] -= learning_rate * gradients['db' + str(l)]
 
     return parameters
 
-def predict(X, parameters):
-    activations = forward_propagation(X, parameters)
+def predict(x, parameters):
+    activations = forward_propagation(x, parameters)
     return activations['A' + str(len(parameters) // 2)]
 
 def build_model_filename(hidden_layers, learning_rate, batch_size, epochs):
@@ -71,11 +71,11 @@ def build_model_filename(hidden_layers, learning_rate, batch_size, epochs):
 
 def save_model(parameters, layers, learning_rate, batch_size, epochs):
     # 1) Création du dossier models/
-    os.makedirs("models", exist_ok=True)
+    os.makedirs("../models", exist_ok=True)
 
     # 2) Construire le nom du fichier
     filename = build_model_filename(layers, learning_rate, batch_size, epochs)
-    filepath = os.path.join("models", filename)
+    filepath = os.path.join("../models", filename)
 
     # 3) Filtrer W* et b*
     filtered = {k: v for k, v in parameters.items() if k.startswith(("W", "b"))}
@@ -86,37 +86,36 @@ def save_model(parameters, layers, learning_rate, batch_size, epochs):
     print(f"Model saved to: {filepath}")
     return filepath
 
-def deep_neural_network(X_train_path, y_train_path, X_valid_path, y_valid_path, hidden_layers, learning_rate, epochs, batch_size):
+def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, hidden_layers, learning_rate, epochs, batch_size):
 
     if not isinstance(hidden_layers, (list, tuple)) or not all(isinstance(x, int) for x in hidden_layers):
         raise ValueError("hidden_layers must be a list of integers")
 
     try:
-        X_train = np.genfromtxt(X_train_path, delimiter=",")
+        x_train = np.genfromtxt(x_train_path, delimiter=",")
         y_train = np.genfromtxt(y_train_path, delimiter=",")
-        X_valid = np.genfromtxt(X_valid_path, delimiter=",")
+        x_valid = np.genfromtxt(x_valid_path, delimiter=",")
         y_valid = np.genfromtxt(y_valid_path, delimiter=",")
     except Exception as e:
         raise ValueError(f"Error loading CSV files: {str(e)}")
 
     # Format attendu : (n_features, n_samples)
-    X_train = X_train.T
-    X_valid = X_valid.T
+    x_train = x_train.T
+    x_valid = x_valid.T
 
     # y_train et y_valid doivent être (n_classes, n_samples)
     y_train = y_train.T
     y_valid = y_valid.T
 
-    print('dimensions de X_train:', X_train.shape)
+    print('dimensions de X_train:', x_train.shape)
     print('dimensions de y_train:', y_train.shape)
 
     dimensions = list(hidden_layers)
-    dimensions.insert(0, X_train.shape[0])  # input layer
+    dimensions.insert(0, x_train.shape[0])  # input layer
     dimensions.append(2)  # output layer (2 classes)
     print(f"Network dimensions: {dimensions}")
 
     parameters = initialize(dimensions)
-    # L = len(parameters) // 2
 
     training_history = np.zeros((epochs, 3))
 
@@ -125,41 +124,41 @@ def deep_neural_network(X_train_path, y_train_path, X_valid_path, y_valid_path, 
     for i in pbar:
 
         if batch_size == 0:
-            activations = forward_propagation(X_train, parameters)
+            activations = forward_propagation(x_train, parameters)
             gradients = back_propagation(y_train, parameters, activations)
             parameters = update(gradients, parameters, learning_rate)
 
         else:
             # Shuffle
-            permutation = np.random.permutation(X_train.shape[1])
-            X_shuffled = X_train[:, permutation]
+            permutation = np.random.permutation(x_train.shape[1])
+            x_shuffled = x_train[:, permutation]
             y_shuffled = y_train[:, permutation]
 
-            nb_batches = X_train.shape[1] // batch_size
+            nb_batches = x_train.shape[1] // batch_size
 
             for b in range(nb_batches):
                 start = b * batch_size
                 end = (b + 1) * batch_size
 
-                X_batch = X_shuffled[:, start:end]
+                x_batch = x_shuffled[:, start:end]
                 y_batch = y_shuffled[:, start:end]
 
-                activations = forward_propagation(X_batch, parameters)
+                activations = forward_propagation(x_batch, parameters)
                 gradients = back_propagation(y_batch, parameters, activations)
                 parameters = update(gradients, parameters, learning_rate)
 
         # === Full train eval ===
-        Af = predict(X_train, parameters)
-        Af = np.clip(Af, 1e-15, 1 - 1e-15)
+        af = predict(x_train, parameters)
+        af = np.clip(af, 1e-15, 1 - 1e-15)
 
-        y_train_T = y_train.T
-        Af_T = Af.T
+        y_train_t = y_train.T
+        af_t = af.T
 
-        train_loss = float(log_loss(y_train_T, Af_T))
-        train_acc = float(accuracy_score(y_train_T.argmax(axis=1), Af_T.argmax(axis=1)))
+        train_loss = float(log_loss(y_train_t, af_t))
+        train_acc = float(accuracy_score(y_train_t.argmax(axis=1), af_t.argmax(axis=1)))
 
         # Validation
-        y_pred_valid = predict(X_valid, parameters)
+        y_pred_valid = predict(x_valid, parameters)
         valid_acc = float(accuracy_score(y_valid.T.argmax(axis=1), y_pred_valid.T.argmax(axis=1)))
 
         # Save history

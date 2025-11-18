@@ -1,8 +1,8 @@
 import argparse
 
-from parser_utils import ratio_type, positive_int
-from split_data import split_data
-from neural_network import deep_neural_network
+from src.parser_utils import ratio_type, positive_int
+from src.split_data import split_data
+from src.neural_network import deep_neural_network
 
 # TODO :
 #     - Training program
@@ -134,4 +134,4 @@ if __name__ == "__main__":
         split_data(args.dataset_path, args.ratio, args.random_seed)
 
     elif args.action == "train":
-        deep_neural_network("data/X_training_data.csv", "data/y_onehot_training_data.csv", "data/X_validation_data.csv", "data/y_onehot_validation_data.csv", args.layers, args.learning_rate, args.epochs, args.batch_size)
+        deep_neural_network("../data/X_training_data.csv", "data/y_onehot_training_data.csv", "data/X_validation_data.csv", "data/y_onehot_validation_data.csv", args.layers, args.learning_rate, args.epochs, args.batch_size)
