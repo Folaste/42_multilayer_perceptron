@@ -6,15 +6,13 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.metrics import log_loss, accuracy_score
 
-from src.mlp_utils import ft_log_loss, ft_accuracy_score
 
-
-def initialize(dimensions):
+def initialize(dimensions, random_seed):
 
     parameters = {}
     l = len(dimensions)
 
-    np.random.seed(1)
+    np.random.seed(random_seed)
 
     for l in range(1, l):
         parameters['W' + str(l)] = np.random.randn(dimensions[l], dimensions[l-1])
@@ -74,23 +72,23 @@ def build_model_filename(hidden_layers, learning_rate, batch_size, epochs):
     return f"model_h[{hl}]_lr{learning_rate}_bs{batch_size}_ep{epochs}.npz"
 
 def save_model(parameters, layers, learning_rate, batch_size, epochs):
-    # 1) Création du dossier models/
-    os.makedirs("../models", exist_ok=True)
+    # 1) Create models folder
+    os.makedirs("models", exist_ok=True)
 
-    # 2) Construire le nom du fichier
+    # 2) Build filename
     filename = build_model_filename(layers, learning_rate, batch_size, epochs)
-    filepath = os.path.join("../models", filename)
+    filepath = os.path.join("models", filename)
 
-    # 3) Filtrer W* et b*
+    # 3) Filter parameters to only keep W and b
     filtered = {k: v for k, v in parameters.items() if k.startswith(("W", "b"))}
 
-    # 4) Sauvegarde
+    # 4) Save model
     np.savez(filepath, **filtered)
 
     print(f"Model saved to: {filepath}")
     return filepath
 
-def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, hidden_layers, learning_rate, epochs, batch_size):
+def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, hidden_layers, learning_rate, epochs, batch_size, random_seed=42):
 
     if not isinstance(hidden_layers, (list, tuple)) or not all(isinstance(x, int) for x in hidden_layers):
         raise ValueError("hidden_layers must be a list of integers")
@@ -119,9 +117,9 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
     dimensions.append(2)  # output layer (2 classes)
     print(f"Network dimensions: {dimensions}")
 
-    parameters = initialize(dimensions)
+    parameters = initialize(dimensions, random_seed)
 
-    training_history = np.zeros((epochs, 6))
+    training_history = np.zeros((epochs, 4))
 
     pbar = tqdm(range(epochs), desc="Training")
 
@@ -157,24 +155,29 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
 
         y_train_t = y_train.T
         af_t = af.T
+        y_valid_t = y_valid.T
+        af_v = predict(x_valid, parameters)
+        af_v = np.clip(af_v, 1e-15, 1 - 1e-15)
+        af_v_t = af_v.T
 
         train_loss = float(log_loss(y_train_t, af_t))
         train_acc = float(accuracy_score(y_train_t.argmax(axis=1), af_t.argmax(axis=1)))
 
         # Validation
+        valid_loss = float(log_loss(y_valid_t, af_v_t))
         y_pred_valid = predict(x_valid, parameters)
         valid_acc = float(accuracy_score(y_valid.T.argmax(axis=1), y_pred_valid.T.argmax(axis=1)))
 
         # Save history
         training_history[i, 0] = train_loss
-        training_history[i, 1] = train_acc
-        training_history[i, 2] = valid_acc
-        training_history[i, 3] = ft_log_loss(y_train_t, af_t)
-        training_history[i, 4] = float(ft_accuracy_score(y_train_t.argmax(axis=1), af_t.argmax(axis=1)))
-        training_history[i, 5] = float(ft_accuracy_score(y_valid.T.argmax(axis=1), y_pred_valid.T.argmax(axis=1)))
+        training_history[i, 1] = valid_loss
+
+        training_history[i, 2] = train_acc
+        training_history[i, 3] = valid_acc
+
         # Update tqdm display
         pbar.set_postfix({
-            "loss": f"{train_loss:.3f}",
+            "train_loss": f"{train_loss:.3f}",
             "train_acc": f"{train_acc:.3f}",
             "valid_acc": f"{valid_acc:.3f}",
         })
@@ -182,31 +185,27 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
     for i in range(epochs):
         print(f"Epoch {i + 1}/{epochs} : "
               f"train loss : {round(float(training_history[i, 0]), 3)} - "
-              f"train acc : {round(float(training_history[i, 1]), 3)} - "
-              f"valid acc : {round(float(training_history[i, 2]), 3)}"
-        )
-        print(f"Epoch {i + 1}/{epochs} : "
-              f"train loss : {round(float(training_history[i, 3]), 3)} - "
-              f"train acc : {round(float(training_history[i, 4]), 3)} - "
-              f"valid acc : {round(float(training_history[i, 5]), 3)}"
+              f"valid loss : {round(float(training_history[i, 1]), 3)} - "
+              f"train acc : {round(float(training_history[i, 2]), 3)} - "
+              f"valid acc : {round(float(training_history[i, 3]), 3)}"
         )
 
     save_model(parameters, dimensions, learning_rate, batch_size, epochs)
 
-
-    # === Graphiques ===
+    # === Graphs ===
     plt.figure(figsize=(12, 4))
     plt.suptitle("Model evolution", fontsize=20)
     plt.subplot(1, 2, 1)
     plt.title("Loss")
     plt.plot(training_history[:, 0], label='train loss')
+    plt.plot(training_history[:, 1], label='valid loss', color='orange', linestyle='dashed')
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.legend()
     plt.subplot(1, 2, 2)
     plt.title("Accuracy")
-    plt.plot(training_history[:, 1], label='train acc')
-    plt.plot(training_history[:, 2], label='valid acc')
+    plt.plot(training_history[:, 2], label='train acc')
+    plt.plot(training_history[:, 3], label='valid acc')
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
     plt.legend()

@@ -3,17 +3,8 @@ import argparse
 from src.parser_utils import ratio_type, positive_int
 from src.split_data import split_data
 from src.neural_network import deep_neural_network
+from src.predict import final_prediction
 
-# TODO :
-#     - Training program
-#         - Class ?
-#         - Stock best model
-#     - Learning program
-#     - Docs
-#         - README
-#         - Docstring ?
-
-# Tests super concluant sur 24 24 24, lr 0.02, e 5000
 
 def parse_args():
 
@@ -40,12 +31,19 @@ def parse_args():
                             help="Path to the input dataset."
                         )
 
-    split_parser.add_argument("-r", "--ratio",
+    split_parser.add_argument("-dr", "--dev_ratio",
                             type=ratio_type,
                             required=False,
-                            help="Ratio of the validation set to the total dataset (between 0 and 1, default = 0.2).",
-                            default=0.2
+                            help="Ratio of the validation set to the total dataset (between 0 and 1, default = 0.15).",
+                            default=0.15
                         )
+
+    split_parser.add_argument("-tr", "--test_ratio",
+                          type=ratio_type,
+                          required=False,
+                          help="Ratio of the validation set to the total dataset (between 0 and 1, default = 0.15).",
+                          default=0.15
+                      )
 
     split_parser.add_argument("-s", "--random_seed",
                             type=int,
@@ -61,6 +59,7 @@ def parse_args():
                             default="z-score",
                             choices=["z-score", "min-max"]
                         )
+
 
     train_parser = parser.add_argument_group(title="Train arguments")
 
@@ -108,30 +107,48 @@ def parse_args():
                             default="heNormal"
                         )
 
-    return parser.parse_args()
+    predict_parser = parser.add_argument_group(title="Predict arguments")
 
-    # TODO : Add arguments for training program :
-    #     - layers V
-    #     - epochs V
-    #     - learning_rate V
-    #     - batch_size V
-    #     - activation_function V
-    #     - loss_function ?
-    #     - weights_initializers V
+    predict_parser.add_argument("-m", "--model_path",
+                            type=str,
+                            required=False,
+                            help="Path to the model to use for prediction.")
+
+    predict_parser.add_argument("-v", "--verbose",
+                                    action="store_true",
+                                    help="Print each sample prediction results."
+                                )
+
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    # try:
-    args = parse_args()
-    print(args)
+    try:
+        args = parse_args()
+        # print(args)
 
-    # except Exception as e:
-    #     print(f"Error: {e}")
-    if args.action == "split" and not args.dataset_path:
-        raise ValueError("You must provide a dataset path when splitting the data.")
+        # except Exception as e:
+        #     print(f"Error: {e}")
+        if args.action == "split" and not args.dataset_path:
+            raise ValueError("You must provide a dataset path when splitting the data.")
 
-    if args.action == "split":
-        split_data(args.dataset_path, args.ratio, args.random_seed)
+        if args.action == "split" and ((args.test_ratio + args.dev_ratio) >= 1) :
+            raise ValueError("test_ratio + dev_ratio must be lower than 1.")
 
-    elif args.action == "train":
-        deep_neural_network("data/X_training_data.csv", "data/y_onehot_training_data.csv", "data/X_validation_data.csv", "data/y_onehot_validation_data.csv", args.layers, args.learning_rate, args.epochs, args.batch_size)
+        if args.action == "split":
+            split_data(args.dataset_path, args.dev_ratio, args.test_ratio, args.random_seed, args.normalisation_method)
+
+        elif args.action == "train":
+            deep_neural_network("data/X_training_data.csv", "data/y_onehot_training_data.csv", "data/X_dev_data.csv", "data/y_onehot_dev_data.csv", args.layers, args.learning_rate, args.epochs, args.batch_size, args.random_seed)
+
+        elif args.action == "predict" and not args.model_path:
+            raise ValueError("You must provide a model path when predicting.")
+
+        elif args.action == "predict":
+            final_prediction(args.model_path, "data/X_test_data.csv", "data/y_onehot_test_data.csv", args.verbose)
+
+        else:
+            print("Action not recognized.")
+
+    except Exception as e:
+        print(f"Error: {e}")
