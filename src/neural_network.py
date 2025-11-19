@@ -90,7 +90,7 @@ def save_model(parameters, layers, learning_rate, batch_size, epochs):
 
 def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, hidden_layers, learning_rate, epochs, batch_size, random_seed=42):
 
-    if not isinstance(hidden_layers, (list, tuple)) or not all(isinstance(x, int) for x in hidden_layers):
+    if not isinstance(hidden_layers, (list, tuple)) or not all(isinstance(x, int) for x in hidden_layers): # TODO: Check positives
         raise ValueError("hidden_layers must be a list of integers")
 
     try:
@@ -121,9 +121,9 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
 
     training_history = np.zeros((epochs, 4))
 
-    pbar = tqdm(range(epochs), desc="Training")
+    progress_bar = tqdm(range(epochs), desc="Training")
 
-    for i in pbar:
+    for i in progress_bar:
 
         if batch_size == 0:
             activations = forward_propagation(x_train, parameters)
@@ -176,7 +176,7 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
         training_history[i, 3] = valid_acc
 
         # Update tqdm display
-        pbar.set_postfix({
+        progress_bar.set_postfix({
             "train_loss": f"{train_loss:.3f}",
             "train_acc": f"{train_acc:.3f}",
             "valid_acc": f"{valid_acc:.3f}",
@@ -210,5 +210,3 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
     plt.ylabel("Accuracy")
     plt.legend()
     plt.show()
-
-    return training_history

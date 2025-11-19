@@ -132,26 +132,28 @@ def main():
     try:
         args = parse_args()
 
-        if args.action == "split" and not args.dataset_path:
-            raise ValueError("You must provide a dataset path when splitting the data.")
+        match args.action:
+            case "split":
+                if not args.dataset_path:
+                    raise ValueError("You must provide a dataset path when splitting the data.")
+                if (args.test_ratio + args.dev_ratio) >= 1:
+                    raise ValueError("test_ratio + dev_ratio must be lower than 1.")
+                split_data(args.dataset_path, args.dev_ratio, args.test_ratio, args.random_seed,
+                           args.normalisation_method)
 
-        if args.action == "split" and ((args.test_ratio + args.dev_ratio) >= 1) :
-            raise ValueError("test_ratio + dev_ratio must be lower than 1.")
+            case "train":
+                deep_neural_network("data/X_training_data.csv", "data/y_onehot_training_data.csv",
+                                    "data/X_dev_data.csv", "data/y_onehot_dev_data.csv", args.layers,
+                                    args.learning_rate, args.epochs, args.batch_size, args.random_seed)
 
-        if args.action == "split":
-            split_data(args.dataset_path, args.dev_ratio, args.test_ratio, args.random_seed, args.normalisation_method)
+            case "predict":
+                if not args.model_path:
+                    raise ValueError("You must provide a model path when predicting.")
+                final_prediction(args.model_path, "data/X_test_data.csv", "data/y_onehot_test_data.csv", args.verbose,
+                                 args.confusion_matrix)
 
-        elif args.action == "train":
-            deep_neural_network("data/X_training_data.csv", "data/y_onehot_training_data.csv", "data/X_dev_data.csv", "data/y_onehot_dev_data.csv", args.layers, args.learning_rate, args.epochs, args.batch_size, args.random_seed)
-
-        elif args.action == "predict" and not args.model_path:
-            raise ValueError("You must provide a model path when predicting.")
-
-        elif args.action == "predict":
-            final_prediction(args.model_path, "data/X_test_data.csv", "data/y_onehot_test_data.csv", args.verbose, args.confusion_matrix)
-
-        else:
-            print("Action not recognized.")
+            case _:
+                print("Action not recognized.")
 
     except Exception as e:
         print(f"Error: {e}")
