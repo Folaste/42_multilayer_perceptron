@@ -10,8 +10,7 @@ A compact educational implementation of a multilayer perceptron (MLP) created fo
 - Minimal, readable code intended for learning and extension
 
 ## Requirements
-- A compatible compiler/interpreter for the repo's language (check the codebase) — common examples:
-  - Python 3.10+
+- Python 3.10+
 - A terminal / shell environment
 - (Optional) datasets in CSV format for training/testing
 
