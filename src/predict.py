@@ -27,25 +27,38 @@ def binary_cross_entropy(y_true, y_pred):
     return loss
 
 
-def final_prediction(model, x_path, y_path=None, show_samples_predictions=False):
+def final_prediction(model, x_path, y_path, show_samples_predictions=False, show_confusion_matrix=False):
+    """
+    Prediction program
+
+    Args:
+        model: path to .npz file containing model parameters
+        x_path: path to CSV file containing features
+        y_path: path to CSV file containing labels
+        show_samples_predictions: if True, displays sample predictions
+        show_confusion_matrix: if True, displays confusion matrix
+    """
     # --- Load parameters ---
     if (not model.endswith(".npz")) or (not os.path.isfile(model)):
         raise ValueError(
             f"Model file '{model}' does not exist or is not a valid .npz file."
         )
-    npzfile = np.load(model)
-    parameters = {key: npzfile[key] for key in npzfile.files}
+    npz_file = np.load(model)
+    parameters = {key: npz_file[key] for key in npz_file.files}
 
     # --- Load CSV data as float ---
+    if (not x_path.endswith(".csv")) or (not os.path.isfile(x_path)):
+        raise ValueError("x_path must be a valid CSV file.")
     x_data = np.loadtxt(x_path, delimiter=',', dtype=float).T
-    # (transpose to get (n_features, n_samples))
 
     y_data = None
     if y_path is not None:
         y_data = np.loadtxt(y_path, delimiter=',', dtype=float)
-        # if one-hot, convert to labels
         if y_data.ndim > 1:
             y_data = np.argmax(y_data, axis=1)
+
+    if x_data is None or model is None or y_data is None:
+        raise ValueError("Invalid input data.")
 
     # --- Forward pass ---
     activations = forward_propagation(x_data, parameters)
@@ -64,29 +77,26 @@ def final_prediction(model, x_path, y_path=None, show_samples_predictions=False)
         "predictions": predictions
     }
 
-    # --- Evaluation if labels provided ---
-    if y_data is not None:
-        # Accuracy
-        accuracy = np.mean(predictions == y_data)
-        result["accuracy"] = accuracy
+    # Accuracy
+    accuracy = np.mean(predictions == y_data)
+    result["accuracy"] = accuracy
 
-        # Binary Cross-Entropy Loss
-        # Get probability for class 1 (M)
-        y_pred_proba = a_final[1, :]
-        loss = binary_cross_entropy(y_data, y_pred_proba)
-        result["loss"] = loss
+    # Binary Cross-Entropy Loss
+    # Get probability for class 1 (M)
+    y_pred_proba = a_final[1, :]
+    loss = binary_cross_entropy(y_data, y_pred_proba)
+    result["loss"] = loss
 
-        print(f"\n{'=' * 50}")
-        print(f"EVALUATION METRICS")
-        print(f"{'=' * 50}")
-        print(f"Accuracy: {accuracy:.4f} ({accuracy * 100:.2f}%)")
-        print(f"Binary Cross-Entropy Loss: {loss:.6f}")
-        print(f"{'=' * 50}\n")
+    print(f"\n{'=' * 50}")
+    print(f"EVALUATION METRICS")
+    print(f"{'=' * 50}")
+    print(f"Accuracy: {accuracy:.4f} ({accuracy * 100:.2f}%)")
+    print(f"Binary Cross-Entropy Loss: {loss:.6f}")
+    print(f"{'=' * 50}\n")
 
-        # --- Confusion Matrix ---
+    # --- Confusion Matrix ---
+    if show_confusion_matrix:
         plot_confusion_matrix(y_data, predictions)
-
-    return result
 
 
 def print_sample_predictions(a_final, predictions, y_true):
@@ -123,6 +133,10 @@ def print_sample_predictions(a_final, predictions, y_true):
 def plot_confusion_matrix(y_true, y_pred):
     """
     Creates and displays a confusion matrix
+
+    Args:
+        y_true: true labels
+        y_pred: predicted labels
     """
     cm = confusion_matrix(y_true, y_pred)
 

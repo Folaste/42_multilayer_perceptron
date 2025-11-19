@@ -23,6 +23,14 @@ def parse_args():
                             choices=["split", "train", "predict"]
                         )
 
+    mandatory_parser.add_argument("-s", "--random_seed",
+                            type=int,
+                            required=False,
+                            default=None,
+                            help="Random seed to use for shuffling data in splitting program "
+                                 "and initialize weights and biases. (default = None)."
+                        )
+
     split_parser = parser.add_argument_group(title="Split arguments")
 
     split_parser.add_argument("-d", "--dataset_path",
@@ -44,13 +52,6 @@ def parse_args():
                           help="Ratio of the validation set to the total dataset (between 0 and 1, default = 0.15).",
                           default=0.15
                       )
-
-    split_parser.add_argument("-s", "--random_seed",
-                            type=int,
-                            required=False,
-                            default=None,
-                            help="Random seed to use for shuffling data in splitting program (default = None)."
-                        )
 
     split_parser.add_argument("-n", "--normalisation_method",
                             type=str,
@@ -119,16 +120,18 @@ def parse_args():
                                     help="Print each sample prediction results."
                                 )
 
+    predict_parser.add_argument("-cm", "--confusion_matrix",
+                                action="store_true",
+                                help="Print the confusion matrix."
+                                )
+
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+def main():
     try:
         args = parse_args()
-        # print(args)
 
-        # except Exception as e:
-        #     print(f"Error: {e}")
         if args.action == "split" and not args.dataset_path:
             raise ValueError("You must provide a dataset path when splitting the data.")
 
@@ -145,10 +148,14 @@ if __name__ == "__main__":
             raise ValueError("You must provide a model path when predicting.")
 
         elif args.action == "predict":
-            final_prediction(args.model_path, "data/X_test_data.csv", "data/y_onehot_test_data.csv", args.verbose)
+            final_prediction(args.model_path, "data/X_test_data.csv", "data/y_onehot_test_data.csv", args.verbose, args.confusion_matrix)
 
         else:
             print("Action not recognized.")
 
     except Exception as e:
         print(f"Error: {e}")
+
+
+if __name__ == "__main__":
+    main()
