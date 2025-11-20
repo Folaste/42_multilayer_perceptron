@@ -142,6 +142,8 @@ def main():
                            args.normalisation_method)
 
             case "train":
+                if len(args.layers) < 2:
+                    raise ValueError("You must provide at least 2 hidden layers when training.")
                 deep_neural_network("data/X_training_data.csv", "data/y_onehot_training_data.csv",
                                     "data/X_dev_data.csv", "data/y_onehot_dev_data.csv", args.layers,
                                     args.learning_rate, args.epochs, args.batch_size, args.random_seed)
