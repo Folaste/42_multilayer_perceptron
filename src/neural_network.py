@@ -52,6 +52,7 @@ def back_propagation(y, parameters, activations):
 
     return gradients
 
+
 def update(gradients, parameters, learning_rate):
     l = len(parameters) // 2
 
@@ -61,15 +62,18 @@ def update(gradients, parameters, learning_rate):
 
     return parameters
 
+
 def predict(x, parameters):
     activations = forward_propagation(x, parameters)
     return activations['A' + str(len(parameters) // 2)]
+
 
 def build_model_filename(hidden_layers, learning_rate, batch_size, epochs):
     hl = "-".join(str(h) for h in hidden_layers)
     if batch_size == 0:
         return f"model_h[{hl}]_lr{learning_rate}_ep{epochs}.npz"
     return f"model_h[{hl}]_lr{learning_rate}_bs{batch_size}_ep{epochs}.npz"
+
 
 def save_model(parameters, layers, learning_rate, batch_size, epochs):
     # 1) Create models folder
@@ -88,9 +92,30 @@ def save_model(parameters, layers, learning_rate, batch_size, epochs):
     print(f"Model saved to: {filepath}")
     return filepath
 
+
+def plot_graph(training_history):
+    plt.figure(figsize=(12, 4))
+    plt.suptitle("Model evolution", fontsize=20)
+    plt.subplot(1, 2, 1)
+    plt.title("Loss")
+    plt.plot(training_history[:, 0], label='train loss')
+    plt.plot(training_history[:, 1], label='valid loss', color='orange', linestyle='dashed')
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.subplot(1, 2, 2)
+    plt.title("Accuracy")
+    plt.plot(training_history[:, 2], label='train acc')
+    plt.plot(training_history[:, 3], label='valid acc')
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.show()
+
+
 def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, hidden_layers, learning_rate, epochs, batch_size, random_seed=42):
 
-    if not isinstance(hidden_layers, (list, tuple)) or not all(isinstance(x, int) for x in hidden_layers): # TODO: Check positives
+    if not isinstance(hidden_layers, (list, tuple)) or not all(isinstance(x, int) for x in hidden_layers):
         raise ValueError("hidden_layers must be a list of integers")
 
     try:
@@ -192,21 +217,4 @@ def deep_neural_network(x_train_path, y_train_path, x_valid_path, y_valid_path, 
 
     save_model(parameters, dimensions, learning_rate, batch_size, epochs)
 
-    # === Graphs ===
-    plt.figure(figsize=(12, 4))
-    plt.suptitle("Model evolution", fontsize=20)
-    plt.subplot(1, 2, 1)
-    plt.title("Loss")
-    plt.plot(training_history[:, 0], label='train loss')
-    plt.plot(training_history[:, 1], label='valid loss', color='orange', linestyle='dashed')
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.subplot(1, 2, 2)
-    plt.title("Accuracy")
-    plt.plot(training_history[:, 2], label='train acc')
-    plt.plot(training_history[:, 3], label='valid acc')
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.legend()
-    plt.show()
+    plot_graph(training_history)
